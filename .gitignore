@@ -1,0 +1,36 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Django runtime files
+db.sqlite3
+logs/
+*.log
+
+# Generated data files from scheduled tasks
+scheduledTask/HistoricalData/*.csv
+scheduledTask/RecentData/*.csv
+scheduledTask/TrainingData/*.csv
+
+# Windows / editor
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Accidentally committed nested virtualenv artifacts
+forex/Include/
+forex/Lib/
+forex/Scripts/
+forex/pyvenv.cfg

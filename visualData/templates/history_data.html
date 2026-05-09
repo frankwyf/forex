@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Historical Data</title>
+    {% load static %}
+    <script src="{% static 'js/echarts.min.js' %}"></script>
+    <style>
+        /* 设置图表容器的宽度和高度为相对单位 */
+        #chart {
+            width: 100%;
+            height: 80vh; /* 视口高度 */
+        }
+    </style>
+</head>
+<body>
+    <h1>Historical Data</h1>
+    <form id="history-form">
+        <label for="symbol">Currency Pair:</label>
+        <select id="symbol" name="symbol" onchange="loadChart()">
+            {% for symbol in symbols %}
+                <option value="{{ symbol }}" {% if symbol == default_symbol %}selected{% endif %}>{{ symbol }}</option>
+            {% endfor %}
+        </select>
+        <label for="start_date">Start Date:</label>
+        <input type="date" id="start_date" name="start_date" onchange="validateDate()">
+        <label for="end_date">End Date:</label>
+        <input type="date" id="end_date" name="end_date" onchange="validateDate()">
+    </form>
+    <div id="chart"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadChart();  // 页面加载时自动加载图表
+        });
+
+        function validateDate() {
+            var start_date = document.getElementById('start_date').value;
+            var end_date = document.getElementById('end_date').value;
+            var min_date = "{{ date_range.min_date|date:'Y-m-d' }}";
+            var max_date = "{{ date_range.max_date|date:'Y-m-d' }}";
+
+            if ((start_date && (start_date < min_date || start_date > max_date)) || 
+                (end_date && (end_date < min_date || end_date > max_date))) {
+                    // clear the date fields
+                    document.getElementById('start_date').value = '';
+                    document.getElementById('end_date').value = '';
+                alert("Selected date is out of range! Available date range: " + min_date + " to " + max_date);
+            } else {
+                // fill in date fields if empty
+                if (!start_date) {
+                    document.getElementById('start_date').value = min_date;
+                }
+                if (!end_date) {
+                    document.getElementById('end_date').value = max_date;
+                }
+                loadChart();
+            }
+        }
+
+        function loadChart() {
+            var symbol = document.getElementById('symbol').value;
+            var start_date = document.getElementById('start_date').value;
+            var end_date = document.getElementById('end_date').value;
+            var url = `/visual/get_historical_chart/?symbol=${symbol}&start_date=${start_date}&end_date=${end_date}`;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    var chart = echarts.init(document.getElementById('chart'));
+                    chart.setOption(JSON.parse(data));
+                });
+        }
+    </script>
+</body>
+</html>
