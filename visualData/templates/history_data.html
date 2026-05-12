@@ -3,6 +3,8 @@
 <head>
     <title>Historical Data</title>
     {% load static %}
+    <link rel="icon" href="{% static 'favicon.svg' %}" type="image/svg+xml">
+    <link rel="shortcut icon" href="{% static 'favicon.svg' %}" type="image/svg+xml">
     <script src="{% static 'js/echarts.min.js' %}"></script>
     <style>
         /* 设置图表容器的宽度和高度为相对单位 */
@@ -14,6 +16,9 @@
 </head>
 <body>
     <h1>Historical Data</h1>
+    {% if not symbols %}
+    <p>No data available yet. Run first-time collection command in README, then refresh this page.</p>
+    {% endif %}
     <form id="history-form">
         <label for="symbol">Currency Pair:</label>
         <select id="symbol" name="symbol" onchange="loadChart()">
@@ -58,6 +63,9 @@
 
         function loadChart() {
             var symbol = document.getElementById('symbol').value;
+            if (!symbol) {
+                return;
+            }
             var start_date = document.getElementById('start_date').value;
             var end_date = document.getElementById('end_date').value;
             var url = `/visual/get_historical_chart/?symbol=${symbol}&start_date=${start_date}&end_date=${end_date}`;

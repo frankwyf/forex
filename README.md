@@ -79,6 +79,27 @@ python manage.py runserver
 
 Default URL: http://127.0.0.1:8000/visual/
 
+## First-Time Data Collection
+
+The chart pages depend on records in the local database. Right after clone and migration, the database is empty, so pages can show no data.
+
+Run a one-time manual collection/import:
+
+```powershell
+python manage.py shell -c "from scheduledTask.views import collect_history_data, collect_recent_data; collect_history_data(); collect_recent_data()"
+```
+
+Verify records were imported:
+
+```powershell
+python manage.py shell -c "from scheduledTask.models import HistoricalData, RecentData; print('Historical:', HistoricalData.objects.count()); print('Recent:', RecentData.objects.count())"
+```
+
+Notes:
+
+- Data source is Yahoo Finance via yfinance.
+- If you see `Too Many Requests. Rate limited. Try after a while.`, wait 15-60 minutes and run the collection command again.
+
 ## Development Workflow
 
 ```powershell
