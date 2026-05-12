@@ -5,55 +5,129 @@
     {% load static %}
     <link rel="icon" href="{% static 'favicon.svg' %}" type="image/svg+xml">
     <link rel="shortcut icon" href="{% static 'favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'css/modern-dashboard.css' %}">
     <script src="{% static 'js/echarts.min.js' %}"></script>
-    <style>
-        /* 设置图表容器的宽度和高度为相对单位 */
-        #chart {
-            width: 100%;
-            height: 80vh; /* 视口高度 */
-        }
-    </style>
 </head>
 <body>
-    <h1>Recent Data</h1>
-    {% if not symbols %}
-    <p>No data available yet. Run first-time collection command in README, then refresh this page.</p>
-    {% endif %}
-    <form id="recent-form">
-        <label for="symbol">Currency Pair:</label>
-        <select id="symbol" name="symbol" onchange="loadChart()">
-            <!-- Add your currency pairs here -->
-            {% for symbol in symbols %}
-                <option value="{{ symbol }}" {% if symbol == default_symbol %}selected{% endif %}>{{ symbol }}</option>
-            {% endfor %}
-        </select>
-        <select id="time_range" name="time_range" onchange="loadChart()">
-            <option value="1d">1 Day</option>
-            <option value="3d">3 Days</option>
-            <option value="1w" selected>1 Week</option>
-            <option value="1m">1 Month</option>
-        </select>
-    </form>
-    <div id="chart"></div>
+    <main class="page-shell">
+        <nav class="top-nav" aria-label="Data view navigation">
+            <a href="/visual/history/">Historical</a>
+            <a class="active" href="/visual/recent/">Recent</a>
+        </nav>
+
+        <header class="page-header">
+            <div>
+                <h1 class="page-title">Recent Market Pulse</h1>
+                <p class="page-subtitle">Zoom in on short-term intraday movements with quick time range switching.</p>
+            </div>
+            <div class="pill">Refresh: Every 30 Minutes</div>
+        </header>
+
+        {% if not symbols %}
+        <section class="empty-state">
+            <h2>No data loaded yet</h2>
+            <p>Run the first-time collection command from README, then refresh this page to render charts.</p>
+        </section>
+        {% endif %}
+
+        <section class="panel controls-panel">
+            <form id="recent-form" class="controls-grid">
+                <div class="control span-4">
+                    <label class="label" for="symbol">Currency Pair</label>
+                    <select class="select" id="symbol" name="symbol" onchange="loadChart()">
+                        {% for symbol in symbols %}
+                            <option value="{{ symbol }}" {% if symbol == default_symbol %}selected{% endif %}>{{ symbol }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="control span-3">
+                    <label class="label" for="time_range">Time Range</label>
+                    <select class="select" id="time_range" name="time_range" onchange="loadChart()">
+                        <option value="1d">1 Day</option>
+                        <option value="3d">3 Days</option>
+                        <option value="1w" selected>1 Week</option>
+                        <option value="1m">1 Month</option>
+                    </select>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel chart-panel">
+            <div class="chart-panel-header">
+                <p class="chart-caption">Use time range to quickly compare near-term movements.</p>
+                <p id="chart-status" class="status-chip">Idle</p>
+            </div>
+            <div id="chart-wrap" class="chart-wrap">
+                <div id="chart"></div>
+            </div>
+        </section>
+    </main>
     <script>
+        var chartInstance = null;
+
         document.addEventListener('DOMContentLoaded', function() {
             loadChart();  // 页面加载时自动加载图表
         });
 
+        function setStatus(text, statusClass) {
+            var statusEl = document.getElementById('chart-status');
+            statusEl.textContent = text;
+            statusEl.className = 'status-chip';
+            if (statusClass) {
+                statusEl.classList.add(statusClass);
+            }
+        }
+
+        function setLoading(isLoading) {
+            var wrap = document.getElementById('chart-wrap');
+            if (isLoading) {
+                wrap.classList.add('is-loading');
+            } else {
+                wrap.classList.remove('is-loading');
+            }
+        }
+
         function loadChart() {
             var symbol = document.getElementById('symbol').value;
             if (!symbol) {
+                setStatus('No symbol available', 'is-error');
                 return;
             }
             var time_range = document.getElementById('time_range').value;
             var url = `/visual/get_recent_chart/?symbol=${symbol}&time_range=${time_range}`;
+
+            setLoading(true);
+            setStatus('Loading chart...', 'is-loading');
+
             fetch(url)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    var chart = echarts.init(document.getElementById('chart'));
-                    chart.setOption(JSON.parse(data));
+                    var parsed = (typeof data === 'string') ? JSON.parse(data) : data;
+                    if (!chartInstance) {
+                        chartInstance = echarts.init(document.getElementById('chart'));
+                    }
+                    chartInstance.setOption(parsed, true);
+                    setStatus('Updated just now', 'is-ready');
+                })
+                .catch(error => {
+                    console.error(error);
+                    setStatus('Failed to load data', 'is-error');
+                })
+                .finally(() => {
+                    setLoading(false);
                 });
         }
+
+        window.addEventListener('resize', function() {
+            if (chartInstance) {
+                chartInstance.resize();
+            }
+        });
     </script>
 </body>
 </html>
