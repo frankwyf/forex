@@ -1,5 +1,7 @@
 import os, logging
 import datetime
+import shutil
+import uuid
 from pathlib import Path
 import yfinance as yf
 
@@ -27,11 +29,13 @@ def _today_utc():
     return datetime.datetime.now(datetime.timezone.utc).date()
 
 def collectHistoryData(directory=None):
-    """Fetch the full historical batch and report whether every provider succeeded."""
+    """Fetch a complete historical batch into its own directory, or return None."""
     logger.debug("*****************Collecting historical data*****************")
 
     directory = Path(directory) if directory is not None else Path(__file__).resolve().parent / "HistoricalData"
     directory.mkdir(parents=True, exist_ok=True)
+    batch_directory = directory / f".batch-{uuid.uuid4().hex}"
+    batch_directory.mkdir()
     end_date = _today_utc()
     tickers = {
         "EURUSD": EURUSD_ticker,
@@ -50,8 +54,8 @@ def collectHistoryData(directory=None):
     failures = []
 
     for filename, ticker in tickers.items():
-        csv_path = directory / f"{filename}.csv"
-        temporary_path = directory / f".{filename}.csv.tmp"
+        csv_path = batch_directory / f"{filename}.csv"
+        temporary_path = batch_directory / f".{filename}.csv.tmp"
         try:
             frame = yf.Ticker(ticker).history(start="2020-01-01", end=end_date, interval="1d")
             if frame.empty:
@@ -69,8 +73,9 @@ def collectHistoryData(directory=None):
 
     if failures:
         logger.error("Historical collection incomplete; failed providers: %s", ", ".join(failures))
-        return False
-    return True
+        shutil.rmtree(batch_directory, ignore_errors=True)
+        return None
+    return batch_directory
 
 def collectRecentData():
     logger.debug("*****************Collecting recent data*****************")

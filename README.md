@@ -25,7 +25,7 @@ Open-source Django project for collecting and visualizing forex, commodity, and 
 ```mermaid
 flowchart LR
 	A[Yahoo Finance API] --> B[scheduledTask/DataCollector.py]
-	B --> C[CSV Cache]
+	B --> C[Isolated Per-run CSV Batch]
 	C --> D[scheduledTask/views.py Import Jobs]
 	D --> E[(SQLite / Django ORM)]
 	E --> F[visualData/views.py]
