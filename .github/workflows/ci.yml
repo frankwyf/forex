@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      DJANGO_DB_NAME: ${{ runner.temp }}/forex-ci.sqlite3
-      TMPDIR: ${{ runner.temp }}
+      DJANGO_DB_NAME: /tmp/forex-ci.sqlite3
+      TMPDIR: /tmp
       PYTHONDONTWRITEBYTECODE: "1"
 
     steps:
