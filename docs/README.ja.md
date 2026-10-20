@@ -18,7 +18,7 @@ Forex Local Visual は、為替・コモディティ・暗号資産データを�
 1. 仮想環境を作成して有効化します。
 
 ```powershell
-cd forex\forex
+cd forex
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```

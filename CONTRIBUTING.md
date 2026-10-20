@@ -14,7 +14,7 @@ Thank you for your interest in contributing to Forex Local Visual.
 1. Create and activate virtual environment.
 
 ```powershell
-cd forex\forex
+cd forex
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```

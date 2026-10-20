@@ -73,7 +73,9 @@ ASGI_APPLICATION = "forex.asgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        # Keep the established local path by default, while allowing isolated
+        # validation databases to live in an external temporary directory.
+        "NAME": os.getenv("DJANGO_DB_NAME", str(BASE_DIR / "db.sqlite3")),
     }
 }
 

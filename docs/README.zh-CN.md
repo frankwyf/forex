@@ -18,7 +18,7 @@ Forex Local Visual 是一个基于 Django 的开源项目，用于采集并可�
 1. 创建并激活虚拟环境。
 
 ```powershell
-cd forex\forex
+cd forex
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```

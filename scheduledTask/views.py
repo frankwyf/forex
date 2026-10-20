@@ -5,6 +5,7 @@ from django_apscheduler.models import DjangoJob
 from apscheduler.schedulers.background import BackgroundScheduler
 from django_apscheduler.jobstores import DjangoJobStore, register_job, register_events
 from .DataCollector import collectHistoryData, collectRecentData, collectTrainingData
+from .importers import replace_historical_data_from_csv
 from django.db import connection
 from django.db.utils import OperationalError, ProgrammingError
 
@@ -27,55 +28,17 @@ def reset_autoincrement(model):
 @register_job(scheduler, 'cron', id='collect_history_data', hour=12, minute=15, day_of_week='mon-fri')
 def collect_history_data():
     try:
-        # Collect historical data
-        collectHistoryData()
-        logger.info("[On Schedule] Historical data collected successfully")
+        if not collectHistoryData():
+            logger.error("Historical collection was incomplete; preserving the existing dataset")
+            return 0
 
-        # Clear existing data
-        HistoricalData.objects.all().delete()
-        reset_autoincrement(HistoricalData)
-        logger.info("[On Schedule] Cleared existing historical data")
-    except Exception as e:
-        logger.error(f"Error collecting historical data: {e}")
-        
-    # Define the directory containing historical data
-    directory_path = os.path.join(os.path.dirname(__file__), 'HistoricalData')
-
-    # Check if the directory exists
-    if os.path.exists(directory_path):
-        try:
-            # Iterate over each file in the directory
-            for filename in os.listdir(directory_path):
-                if filename.endswith('.csv'):
-                    file_path = os.path.join(directory_path, filename)
-
-                    # Extract the currency pair from the filename (assuming the format is like 'EURUSD.csv')
-                    currency_pair = filename.split('.')[0]
-
-                    # Read the CSV file
-                    data = pd.read_csv(file_path)
-
-                    # Iterate over the rows and save them to the database
-                    for index, row in data.iterrows():
-                        # get currency pair from filename, but without the '.csv' extension
-                        # and add a / between the two currencies
-                        currency_pair = currency_pair.split('.')[0]
-                        if len(currency_pair) == 6:
-                            currency_pair = currency_pair[:3] + '/' + currency_pair[3:]
-                                    
-                        HistoricalData.objects.create(
-                            symbol=currency_pair,
-                            date=row['Date'],
-                            open=row['Open'],
-                            high=row['High'],
-                            low=row['Low'],
-                            close=row['Close']
-                        )
-            logger.info("Historical Data imported successfully")
-        except Exception as e:
-            logger.error(f"Error importing data: {e}")
-    else:
-        logger.warning(f"Directory {directory_path} does not exist")
+        directory_path = os.path.join(os.path.dirname(__file__), 'HistoricalData')
+        imported_count = replace_historical_data_from_csv(directory_path)
+        logger.info("Replaced historical dataset with %s validated rows", imported_count)
+        return imported_count
+    except Exception:
+        logger.exception("Historical collection or import failed; preserving the existing dataset")
+        return 0
 
 
 # Task 2: Run every half an hour to collect recent data, weekdays only

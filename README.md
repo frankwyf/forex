@@ -44,10 +44,12 @@ flowchart LR
 
 ## Quick Start (Windows PowerShell)
 
+For macOS (zsh) setup, external-SSD cache configuration, isolated database checks, and scheduling notes, see [macOS Development](docs/macos-development.md).
+
 1. Create and activate virtual environment.
 
 ```powershell
-cd forex\forex
+cd forex
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```

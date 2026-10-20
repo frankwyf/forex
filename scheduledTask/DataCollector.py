@@ -1,5 +1,6 @@
 import os, logging
 import datetime
+from pathlib import Path
 import yfinance as yf
 
 
@@ -21,105 +22,60 @@ NZDUSD_ticker = "NZDUSD=X"
 gold_ticker = "GC=F"
 BITCOIN_ticker = "BTC-USD"
 
-# get today's date
-today = datetime.datetime.now().date()
+# Get the date when a collection runs, not when this module is imported.
+def _today_utc():
+    return datetime.datetime.now(datetime.timezone.utc).date()
 
-def collectHistoryData():
+def collectHistoryData(directory=None):
+    """Fetch the full historical batch and report whether every provider succeeded."""
     logger.debug("*****************Collecting historical data*****************")
 
-    directory_path = os.path.join(os.path.dirname(__file__), 'HistoricalData')
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
+    directory = Path(directory) if directory is not None else Path(__file__).resolve().parent / "HistoricalData"
+    directory.mkdir(parents=True, exist_ok=True)
+    end_date = _today_utc()
+    tickers = {
+        "EURUSD": EURUSD_ticker,
+        "USDJPY": USDJPY_ticker,
+        "JPYCNY": JPYCNY_ticker,
+        "USDCNY": USDCNY_ticker,
+        "AUDCNY": AUDCNY_ticker,
+        "GBPUSD": GBPUSD_ticker,
+        "EURGBP": EURGBP_ticker,
+        "EURJPY": EURJPY_ticker,
+        "GBPJPY": GBPJPY_ticker,
+        "NZDUSD": NZDUSD_ticker,
+        "gold": gold_ticker,
+        "bitcoin": BITCOIN_ticker,
+    }
+    failures = []
 
-    try:
-        # Fetch current data
-        EURUSD_current = yf.Ticker(EURUSD_ticker).history(start="2020-01-01", end=today, interval="1d")
-        EURUSD_current.to_csv(directory_path + "/EURUSD.csv")
-        logger.info("GOT EURUSD Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {EURUSD_ticker}: {e}")
-    
-    try:
-        USDJPY_current = yf.Ticker(USDJPY_ticker).history(start="2020-01-01", end=today, interval="1d")
-        USDJPY_current.to_csv(directory_path + "/USDJPY.csv")
-        logger.info("GOT USDJPY Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {USDJPY_ticker}: {e}")
-    
-    try:
-        JPYCNY_current = yf.Ticker(JPYCNY_ticker).history(start="2020-01-01", end=today, interval="1d")
-        JPYCNY_current.to_csv(directory_path + "/JPYCNY.csv")
-        logger.info("GOT JPYCNY Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {JPYCNY_ticker}: {e}")
-    
-    try:
-        USDCNY_current = yf.Ticker(USDCNY_ticker).history(start="2020-01-01", end=today, interval="1d")
-        USDCNY_current.to_csv(directory_path + "/USDCNY.csv")
-        logger.info("GOT USDCNY Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {USDCNY_ticker}: {e}")
-    
-    try:
-        AUDCNY_current = yf.Ticker(AUDCNY_ticker).history(start="2020-01-01", end=today, interval="1d")
-        AUDCNY_current.to_csv(directory_path + "/AUDCNY.csv")
-        logger.info("GOT AUDCNY Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {AUDCNY_ticker}: {e}")
-    
-    try:
-        GBPUSD_current = yf.Ticker(GBPUSD_ticker).history(start="2020-01-01", end=today, interval="1d")
-        GBPUSD_current.to_csv(directory_path + "/GBPUSD.csv")
-        logger.info("GOT GBPUSD Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {GBPUSD_ticker}: {e}")
+    for filename, ticker in tickers.items():
+        csv_path = directory / f"{filename}.csv"
+        temporary_path = directory / f".{filename}.csv.tmp"
+        try:
+            frame = yf.Ticker(ticker).history(start="2020-01-01", end=end_date, interval="1d")
+            if frame.empty:
+                raise ValueError("provider returned no historical rows")
+            frame.to_csv(temporary_path)
+            os.replace(temporary_path, csv_path)
+            logger.info("Collected historical data for %s", ticker)
+        except Exception as exc:
+            failures.append(ticker)
+            logger.error("Historical collection failed for %s: %s", ticker, exc)
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                logger.warning("Could not remove incomplete temporary file %s", temporary_path)
 
-    try:
-        EURGBP_current = yf.Ticker(EURGBP_ticker).history(start="2020-01-01", end=today, interval="1d")
-        EURGBP_current.to_csv(directory_path + "/EURGBP.csv")
-        logger.info("GOT EURGBP Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {EURGBP_ticker}: {e}")
-    
-    try:
-        EURJPY_current = yf.Ticker(EURJPY_ticker).history(start="2020-01-01", end=today, interval="1d")
-        EURJPY_current.to_csv(directory_path + "/EURJPY.csv")
-        logger.info("GOT EURJPY Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {EURJPY_ticker}: {e}")
-
-    try:
-        GBPJPY_current = yf.Ticker(GBPJPY_ticker).history(start="2020-01-01", end=today, interval="1d")
-        GBPJPY_current.to_csv(directory_path + "/GBPJPY.csv")
-        logger.info("GOT GBPJPY Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {GBPJPY_ticker}: {e}")
-    
-    try:
-        NZDUSD_current = yf.Ticker(NZDUSD_ticker).history(start="2020-01-01", end=today, interval="1d")
-        NZDUSD_current.to_csv(directory_path + "/NZDUSD.csv")
-        logger.info("GOT NZDUSD Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {NZDUSD_ticker}: {e}")
-
-    try:
-        gold_current = yf.Ticker(gold_ticker).history(start="2020-01-01", end=today, interval="1d")
-        gold_current.to_csv(directory_path + "/gold.csv")
-        logger.info("GOT GOLD Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {gold_ticker}: {e}")
-    
-    try:
-        bitcoin_current = yf.Ticker(BITCOIN_ticker).history(start="2020-01-01", end=today, interval="1d")
-        bitcoin_current.to_csv(directory_path + "/bitcoin.csv")
-        logger.info("GOT BITCOIN Historical")
-    except Exception as e:
-        logger.error(f"(Historical) Error fetching currency pair {BITCOIN_ticker}: {e}")
-
+    if failures:
+        logger.error("Historical collection incomplete; failed providers: %s", ", ".join(failures))
+        return False
+    return True
 
 def collectRecentData():
     logger.debug("*****************Collecting recent data*****************")
     # Fetch recent data
+    today = _today_utc()
     start_date = today - datetime.timedelta(days=59)
 
     directory_path = os.path.join(os.path.dirname(__file__), 'RecentData')
@@ -214,6 +170,7 @@ def collectRecentData():
 def collectTrainingData():
     logger.debug("*****************Collecting training data*****************")
     # Fetch recent data
+    today = _today_utc()
     start_date = today - datetime.timedelta(days=729)
 
     directory_path = os.path.join(os.path.dirname(__file__), 'TrainingData')
