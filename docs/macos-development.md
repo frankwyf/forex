@@ -42,7 +42,9 @@ python manage.py runserver 127.0.0.1:8000 --noreload
 
 Open <http://127.0.0.1:8000/visual/history/> to check the visualization page. An empty new database renders the page without market rows. Do not run the Yahoo Finance collection job for development checks; the reliability tests use synthetic CSVs and mocked providers.
 
-The historical import requires a complete set of provider CSVs. It validates every file before opening a database transaction, then replaces the historical rows atomically. If a provider fails or any CSV is invalid, the previous database rows remain in place.
+Each historical collection writes into a new per-run batch directory. The scheduler imports only the directory returned by that collection and removes it afterward; a failed or interrupted run cannot be mixed with CSVs from another run. The importer validates every expected file, then checks inside a database transaction that the candidate retains every existing timestamp and per-symbol row count before replacing rows atomically. A truncated or gapped batch is rejected with per-symbol counts and missing timestamp ranges, while provider failures, invalid CSVs, and database errors preserve the previous dataset.
+
+An intentional reduction is disabled in the scheduled job. After reviewing the candidate CSVs, the reported missing ranges, and a backup of the database, an operator can explicitly call `replace_historical_data_from_csv(reviewed_batch, allow_data_shrink=True)`. The importer records the approved reduction in its warning log with per-symbol counts and ranges.
 
 ## Configuration and scheduling
 

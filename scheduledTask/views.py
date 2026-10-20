@@ -1,4 +1,5 @@
 import logging, os
+import shutil
 import pandas as pd
 from .models import HistoricalData, RecentData
 from django_apscheduler.models import DjangoJob
@@ -27,18 +28,22 @@ def reset_autoincrement(model):
 # Task 1: Run once a day at 8:00 PM to collect historical data, weekdays only   day_of_week='mon-fri'
 @register_job(scheduler, 'cron', id='collect_history_data', hour=12, minute=15, day_of_week='mon-fri')
 def collect_history_data():
+    batch_directory = None
     try:
-        if not collectHistoryData():
+        batch_directory = collectHistoryData()
+        if not batch_directory:
             logger.error("Historical collection was incomplete; preserving the existing dataset")
             return 0
 
-        directory_path = os.path.join(os.path.dirname(__file__), 'HistoricalData')
-        imported_count = replace_historical_data_from_csv(directory_path)
+        imported_count = replace_historical_data_from_csv(batch_directory)
         logger.info("Replaced historical dataset with %s validated rows", imported_count)
         return imported_count
     except Exception:
         logger.exception("Historical collection or import failed; preserving the existing dataset")
         return 0
+    finally:
+        if batch_directory:
+            shutil.rmtree(batch_directory, ignore_errors=True)
 
 
 # Task 2: Run every half an hour to collect recent data, weekdays only
