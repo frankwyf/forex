@@ -77,100 +77,56 @@ def collectHistoryData(directory=None):
         return None
     return batch_directory
 
-def collectRecentData():
+def collectRecentData(directory=None):
+    """Collect all recent providers into an isolated batch, or return None."""
     logger.debug("*****************Collecting recent data*****************")
-    # Fetch recent data
     today = _today_utc()
     start_date = today - datetime.timedelta(days=59)
 
-    directory_path = os.path.join(os.path.dirname(__file__), 'RecentData')
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
+    directory = Path(directory) if directory is not None else Path(__file__).resolve().parent / "RecentData"
+    directory.mkdir(parents=True, exist_ok=True)
+    batch_directory = directory / f".batch-{uuid.uuid4().hex}"
+    batch_directory.mkdir()
 
-    # get the prediction data for the previous month
-    try:
-        EURUSD_recent = yf.Ticker(EURUSD_ticker).history(start=start_date, end=today, interval="2m")
-        EURUSD_recent.to_csv(directory_path + "/EURUSD_recent.csv")
-        logger.info("GOT EURUSD RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {EURUSD_ticker}: {e}")
-    
-    try:
-        USDJPY_recent = yf.Ticker(USDJPY_ticker).history(start=start_date, end=today, interval="2m")
-        USDJPY_recent.to_csv(directory_path + "/USDJPY_recent.csv")
-        logger.info("GOT USDJPY RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {USDJPY_ticker}: {e}")
+    tickers = {
+        "EURUSD_recent.csv": EURUSD_ticker,
+        "USDJPY_recent.csv": USDJPY_ticker,
+        "JPYCNY_recent.csv": JPYCNY_ticker,
+        "USDCNY_recent.csv": USDCNY_ticker,
+        "AUDCNY_recent.csv": AUDCNY_ticker,
+        "GBPUSD_recent.csv": GBPUSD_ticker,
+        "EURGBP_recent.csv": EURGBP_ticker,
+        "EURJPY_recent.csv": EURJPY_ticker,
+        "GBPJPY_recent.csv": GBPJPY_ticker,
+        "NZDUSD_recent.csv": NZDUSD_ticker,
+        "gold_recent.csv": gold_ticker,
+        "bitcoin_recent.csv": BITCOIN_ticker,
+    }
+    failures = []
 
-    try:
-        JPYCNY_recent = yf.Ticker(JPYCNY_ticker).history(start=start_date, end=today, interval="2m")
-        JPYCNY_recent.to_csv(directory_path + "/JPYCNY_recent.csv")
-        logger.info("GOT JPYCNY RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {JPYCNY_ticker}: {e}")
-    
-    try:
-        USDCNY_recent = yf.Ticker(USDCNY_ticker).history(start=start_date, end=today, interval="2m")
-        USDCNY_recent.to_csv(directory_path + "/USDCNY_recent.csv")
-        logger.info("GOT USDCNY RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {USDCNY_ticker}: {e}")
+    for filename, ticker in tickers.items():
+        csv_path = batch_directory / filename
+        temporary_path = batch_directory / f".{filename}.tmp"
+        try:
+            frame = yf.Ticker(ticker).history(start=start_date, end=today, interval="2m")
+            if frame.empty:
+                raise ValueError("provider returned no recent rows")
+            frame.to_csv(temporary_path)
+            os.replace(temporary_path, csv_path)
+            logger.info("Collected recent data for %s", ticker)
+        except Exception as exc:
+            failures.append(ticker)
+            logger.error("(Recent) Error fetching data for %s: %s", ticker, exc)
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                logger.warning("Could not remove incomplete temporary file %s", temporary_path)
 
-    try:
-        AUDCNY_recent = yf.Ticker(AUDCNY_ticker).history(start=start_date, end=today, interval="2m")
-        AUDCNY_recent.to_csv(directory_path + "/AUDCNY_recent.csv")
-        logger.info("GOT AUDCNY RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {AUDCNY_ticker}: {e}")
-
-    try:
-        GBPUSD_recent = yf.Ticker(GBPUSD_ticker).history(start=start_date, end=today, interval="2m")
-        GBPUSD_recent.to_csv(directory_path + "/GBPUSD_recent.csv")
-        logger.info("GOT GBPUSD RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {GBPUSD_ticker}: {e}")
-
-    try:
-        EURGBP_recent = yf.Ticker(EURGBP_ticker).history(start=start_date, end=today, interval="2m")
-        EURGBP_recent.to_csv(directory_path + "/EURGBP_recent.csv")
-        logger.info("GOT EURGBP RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {EURGBP_ticker}: {e}")
-
-    try:
-        EURJPY_recent = yf.Ticker(EURJPY_ticker).history(start=start_date, end=today, interval="2m")
-        EURJPY_recent.to_csv(directory_path + "/EURJPY_recent.csv")
-        logger.info("GOT EURJPY RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {EURJPY_ticker}: {e}")
-
-    try:
-        GBPJPY_recent = yf.Ticker(GBPJPY_ticker).history(start=start_date, end=today, interval="2m")
-        GBPJPY_recent.to_csv(directory_path + "/GBPJPY_recent.csv")
-        logger.info("GOT GBPJPY RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {GBPJPY_ticker}: {e}")
-
-    try:
-        NZDUSD_recent = yf.Ticker(NZDUSD_ticker).history(start=start_date, end=today, interval="2m")
-        NZDUSD_recent.to_csv(directory_path + "/NZDUSD_recent.csv")
-        logger.info("GOT NZDUSD RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {NZDUSD_ticker}: {e}")
-
-    try:
-        gold_recent = yf.Ticker(gold_ticker).history(start=start_date, end=today, interval="2m")
-        gold_recent.to_csv(directory_path + "/gold_recent.csv")
-        logger.info("GOT GOLD RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {gold_ticker}: {e}")
-
-    try:
-        bitcoin_recent = yf.Ticker(BITCOIN_ticker).history(start=start_date, end=today, interval="2m")
-        bitcoin_recent.to_csv(directory_path + "/bitcoin_recent.csv")
-        logger.info("GOT BITCOIN RECENT")
-    except Exception as e:
-        logger.error(f"(Recent) Error fetching currency pair {BITCOIN_ticker}: {e}")
+    if failures:
+        logger.error("Recent collection incomplete; failed providers: %s", ", ".join(failures))
+        shutil.rmtree(batch_directory, ignore_errors=True)
+        return None
+    return batch_directory
 
 def collectTrainingData():
     logger.debug("*****************Collecting training data*****************")
