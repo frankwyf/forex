@@ -30,7 +30,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: Build source archives and checksums from the verified tag
-        run: python scripts/build_release.py --tag "$RELEASE_TAG"
+        run: |
+          git merge-base --is-ancestor HEAD origin/main
+          python scripts/build_release.py --tag "$RELEASE_TAG"
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

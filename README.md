@@ -89,7 +89,7 @@ With DEBUG=False, HTTPS redirects and secure session/CSRF cookies are enabled. P
 
 Live collection is an explicit operator action; see [data contracts and operator notes](docs/architecture.md). Automated tests and first-run demonstrations use synthetic data. A web import does not start APScheduler. Jobs are registered in UTC, but no worker is started by this repository. Per-process concurrency settings do not provide a lock across multiple workers.
 
-Code is MIT licensed. Provider market data is governed by the provider's terms and is not distributed with this project. There are no trading or account integration features.
+Project code is MIT licensed; the bundled ECharts library retains its Apache license and [third-party notices](THIRD_PARTY_NOTICES.md). Provider market data is governed by the provider's terms and is not distributed with this project. There are no trading or account integration features.
 
 ## Project and maintenance
 
