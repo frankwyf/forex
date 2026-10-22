@@ -29,7 +29,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
-      TMPDIR: ${{ runner.temp }}
       PYTHONDONTWRITEBYTECODE: "1"
       DJANGO_LOAD_ENV_FILE: "0"
     steps:
@@ -46,4 +45,6 @@ jobs:
       - name: Check dependency compatibility
         run: python -m pip check
       - name: Check configuration, migrations and offline tests
+        env:
+          TMPDIR: ${{ runner.temp }}
         run: python scripts/verify.py
