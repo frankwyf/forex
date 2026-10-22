@@ -1,130 +1,100 @@
 # Forex Local Visual
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.12+-blue)
-![Django](https://img.shields.io/badge/Django-5.x-0c4b33)
-![Status](https://img.shields.io/badge/status-open--source--ready-brightgreen)
+[![CI](https://github.com/frankwyf/forex/actions/workflows/ci.yml/badge.svg)](https://github.com/frankwyf/forex/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/frankwyf/forex)](https://github.com/frankwyf/forex/releases)
+[![MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Open-source Django project for collecting and visualizing forex, commodity, and crypto market data.
+A Django market-data engineering application with validated CSV batch imports, transactional SQLite persistence, and interactive OHLC charts. Explore it offline with deterministic synthetic data.
 
-## Languages
+**Version 0.2.0 · Python 3.12 / 3.13 · Django 5.2 LTS.** This is a local research and learning application under active development. See the [engineering roadmap](docs/roadmap.zh-CN.md) for the work required before production operation.
 
-- English: [docs/README.en.md](docs/README.en.md)
-- 中文: [docs/README.zh-CN.md](docs/README.zh-CN.md)
-- 日本語: [docs/README.ja.md](docs/README.ja.md)
+[中文](docs/README.zh-CN.md) · [日本語](docs/README.ja.md) · [Architecture and data contracts](docs/architecture.md)
 
-## Features
+## What works
 
-- Scheduled market data collection (historical, recent, training)
-- Django ORM persistence (SQLite default)
-- Interactive visualization with pyecharts
-- Modular app design for future model and strategy integration
+- Historical imports reject missing, malformed, truncated and regressive batches.
+- Recent imports validate all 12 providers before replacing data in a transaction.
+- Provider or database failures preserve the previously committed dataset.
+- Repeated imports collapse duplicate symbol/timestamp pairs.
+- Historical and recent charts use explicit UTC date filters and JSON errors.
+- Offline demo and tests require no Yahoo access or background worker.
 
-## Architecture
+## Quick start: macOS / Linux
 
-```mermaid
-flowchart LR
-	A[Yahoo Finance API] --> B[scheduledTask/DataCollector.py]
-	B --> C[Isolated Per-run CSV Batch]
-	C --> D[scheduledTask/views.py Import Jobs]
-	D --> E[(SQLite / Django ORM)]
-	E --> F[visualData/views.py]
-	F --> G[HTML Templates + ECharts]
-	H[APScheduler] --> D
-```
+Run from the repository root containing `manage.py`. For external-SSD development on macOS, follow [storage configuration](docs/macos-development.md) **before creating the environment or installing dependencies**.
 
-## Repository Layout
-
-- forex/: Django project settings and routing
-- scheduledTask/: scheduler, collectors, import jobs
-- visualData/: view layer and templates
-- processData/: data processing extension area
-- static/: static assets
-- docs/: multilingual documentation
-
-## Quick Start (Windows PowerShell)
-
-For macOS (zsh) setup, external-SSD cache configuration, isolated database checks, and scheduling notes, see [macOS Development](docs/macos-development.md).
-
-1. Create and activate virtual environment.
-
-```powershell
+~~~sh
+git clone https://github.com/frankwyf/forex.git
 cd forex
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 
-2. Install dependencies.
-
-```powershell
-pip install -r requirements.txt
-```
-
-3. Configure environment variables.
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Required variables:
-
-- DJANGO_SECRET_KEY
-- DJANGO_DEBUG
-- DJANGO_ALLOWED_HOSTS
-
-4. Migrate and run.
-
-```powershell
-python manage.py migrate
-python manage.py runserver
-```
-
-Default URL: http://127.0.0.1:8000/visual/
-
-## First-Time Data Collection
-
-The chart pages depend on records in the local database. Right after clone and migration, the database is empty, so pages can show no data.
-
-Run a one-time manual collection/import:
-
-```powershell
-python manage.py shell -c "from scheduledTask.views import collect_history_data, collect_recent_data; collect_history_data(); collect_recent_data()"
-```
-
-Verify records were imported:
-
-```powershell
-python manage.py shell -c "from scheduledTask.models import HistoricalData, RecentData; print('Historical:', HistoricalData.objects.count()); print('Recent:', RecentData.objects.count())"
-```
-
-Notes:
-
-- Data source is Yahoo Finance via yfinance.
-- If you see `Too Many Requests. Rate limited. Try after a while.`, wait 15-60 minutes and run the collection command again.
-
-## Development Workflow
-
-```powershell
-python manage.py check
+# Use a new, dedicated demo database, separate from any existing market data.
+export DJANGO_LOAD_ENV_FILE=0
+export DJANGO_DEBUG=True
+export DJANGO_DEMO_MODE=1
+export DJANGO_DB_NAME="$PWD/demo.sqlite3"
 python manage.py migrate --noinput
-python manage.py runserver --noreload
-```
+python manage.py seed_demo
+python manage.py runserver 127.0.0.1:8000 --noreload
+~~~
 
-## Contributing Guide
+Open [historical charts](http://127.0.0.1:8000/visual/history/) or [recent charts](http://127.0.0.1:8000/visual/recent/). The demo contains synthetic prices anchored in January 2024. `seed_demo` refuses to run when either market-data table already contains rows; it never clears a dataset.
 
-1. Fork this repository.
-2. Create a feature branch from main.
-3. Keep PR scope focused and include test/check evidence.
-4. Ensure sensitive/local artifacts are not committed.
-5. Open a pull request with context, motivation, and screenshots if UI changes are included.
+## Windows PowerShell
 
-## Security and Open-Source Hygiene
+Start in the same repository root; there is no second nested `cd forex` step.
 
-- Never commit .env files or secrets.
-- Never commit local runtime artifacts such as db.sqlite3 and logs.
-- Generated market CSV data is ignored by default.
-- Use your own secret key for any non-local deployment.
+~~~powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+$env:DJANGO_LOAD_ENV_FILE = "0"
+$env:DJANGO_DEBUG = "True"
+$env:DJANGO_DEMO_MODE = "1"
+$env:DJANGO_DB_NAME = Join-Path (Get-Location) "demo.sqlite3"
+python manage.py migrate --noinput
+python manage.py seed_demo
+python manage.py runserver 127.0.0.1:8000 --noreload
+~~~
 
-## License
+## Verify a contribution
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE).
+~~~sh
+python -m pip check
+python scripts/verify.py
+# Optional focused run:
+python scripts/verify.py --tests-only visualData
+~~~
+
+The verifier ignores local `.env` settings, creates disposable file-based SQLite databases inside the process temporary directory, runs configuration and migration checks, and blocks Python socket connections and live yfinance entry points during tests. Set `TMPDIR` to external storage on this Mac. CI verifies Linux, macOS and Windows on Python 3.12 plus Linux on Python 3.13.
+
+## Configuration
+
+The application reads process variables and, by default, an optional local `.env`. Process variables take precedence. `DJANGO_LOAD_ENV_FILE=0` disables that file entirely.
+
+| Variable | Local default | Purpose |
+| --- | --- | --- |
+| DJANGO_DEMO_MODE | 0 | Set 1 for explicitly labeled synthetic demos |
+| DJANGO_DEBUG | True | Local development only |
+| DJANGO_SECRET_KEY | Development placeholder | A strong explicit key is required with DEBUG=False |
+| DJANGO_ALLOWED_HOSTS | 127.0.0.1,localhost | Explicit hosts, without wildcard, are required with DEBUG=False |
+| DJANGO_DB_NAME | Repository db.sqlite3 | Select a dedicated SQLite database |
+| DJANGO_LOAD_ENV_FILE | 1 | Set 0 for isolated checks and demo sessions |
+
+With DEBUG=False, HTTPS redirects and secure session/CSRF cookies are enabled. Public hosting also requires a production server, TLS and proxy configuration, backups, monitoring and a deployment review. Django runserver is for local development.
+
+## Real data and scheduling
+
+Live collection is an explicit operator action; see [data contracts and operator notes](docs/architecture.md). Automated tests and first-run demonstrations use synthetic data. A web import does not start APScheduler. Jobs are registered in UTC, but no worker is started by this repository. Per-process concurrency settings do not provide a lock across multiple workers.
+
+Code is MIT licensed. Provider market data is governed by the provider's terms and is not distributed with this project. There are no trading or account integration features.
+
+## Project and maintenance
+
+- [Contributing](CONTRIBUTING.md), [security reporting](SECURITY.md), [code of conduct](CODE_OF_CONDUCT.md)
+- [Changelog](CHANGELOG.md), [release procedure](docs/releasing.md), [upgrade roadmap](docs/roadmap.zh-CN.md)
+- Runtime dependency ranges remain in `requirements.txt`; `constraints.txt` records the tested dependency snapshot. Review updates through CI. Platform-specific dependencies may still be resolved by pip; this is not a hash-locked supply-chain manifest.
+
+Source releases contain tracked code, documentation and tests as ZIP/tar.gz plus SHA-256 checksums. They exclude local environments, databases, secrets and generated market data.

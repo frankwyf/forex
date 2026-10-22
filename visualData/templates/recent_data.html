@@ -20,13 +20,20 @@
                 <h1 class="page-title">Recent Market Pulse</h1>
                 <p class="page-subtitle">Zoom in on short-term intraday movements with quick time range switching.</p>
             </div>
-            <div class="pill">Refresh: Every 30 Minutes</div>
+            <div class="pill">{% if date_range.min_date %}Stored: {{ date_range.min_date|date:"Y-m-d" }} → {{ date_range.max_date|date:"Y-m-d" }} UTC{% else %}No stored data{% endif %}</div>
         </header>
+
+        {% if demo_mode %}
+        <section class="empty-state" aria-label="Synthetic demo notice">
+            <h2>Synthetic demo data</h2>
+            <p>Generated example prices for learning. These are not observed market prices.</p>
+        </section>
+        {% endif %}
 
         {% if not symbols %}
         <section class="empty-state">
             <h2>No data loaded yet</h2>
-            <p>Run the first-time collection command from README, then refresh this page to render charts.</p>
+            <p>Load the offline demo using the README, then refresh this page to render charts.</p>
         </section>
         {% endif %}
 
@@ -101,10 +108,12 @@
 
             fetch(url)
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
+                    return response.json().then(data => {
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Unable to load chart.');
+                        }
+                        return data;
+                    });
                 })
                 .then(data => {
                     var parsed = (typeof data === 'string') ? JSON.parse(data) : data;
@@ -116,7 +125,7 @@
                 })
                 .catch(error => {
                     console.error(error);
-                    setStatus('Failed to load data', 'is-error');
+                    setStatus(error.message || 'Failed to load data', 'is-error');
                 })
                 .finally(() => {
                     setLoading(false);

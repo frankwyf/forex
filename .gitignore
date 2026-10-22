@@ -15,6 +15,8 @@ env/
 
 # Django runtime files
 db.sqlite3
+demo.sqlite3
+demo.sqlite3-*
 test_*.sqlite3
 *.sqlite3-journal
 *.sqlite3-wal
@@ -27,6 +29,9 @@ scheduledTask/HistoricalData/*.csv
 scheduledTask/RecentData/*.csv
 scheduledTask/TrainingData/*.csv
 *.csv.tmp
+scheduledTask/HistoricalData/.batch-*/
+scheduledTask/RecentData/.batch-*/
+dist/
 
 # Windows / editor
 .vscode/
