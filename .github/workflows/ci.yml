@@ -6,31 +6,45 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   django:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python: "3.12"}
+          - {os: ubuntu-latest, python: "3.13"}
+          - {os: macos-latest, python: "3.12"}
+          - {os: windows-latest, python: "3.12"}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
-      DJANGO_DB_NAME: /tmp/forex-ci.sqlite3
-      TMPDIR: /tmp
       PYTHONDONTWRITEBYTECODE: "1"
-
+      DJANGO_LOAD_ENV_FILE: "0"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python }}
           cache: pip
-          cache-dependency-path: requirements.txt
-      - name: Install dependencies
+          cache-dependency-path: |
+            requirements.txt
+            constraints.txt
+      - name: Install the tested dependency snapshot
         run: python -m pip install -r requirements.txt
-      - name: Check Django configuration
-        run: python manage.py check
-      - name: Check migrations
-        run: python manage.py makemigrations --check --dry-run
-      - name: Run tests
-        run: python manage.py test --verbosity 2
+      - name: Check dependency compatibility
+        run: python -m pip check
+      - name: Check configuration, migrations and offline tests
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: python scripts/verify.py

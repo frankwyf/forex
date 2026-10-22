@@ -3,11 +3,15 @@
 from pathlib import Path
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _load_env_file() -> None:
     """Load a local .env file into process environment if present."""
+    if os.getenv("DJANGO_LOAD_ENV_FILE", "1").lower() in {"0", "false", "no"}:
+        return
     env_path = BASE_DIR / ".env"
     if not env_path.exists():
         return
@@ -25,7 +29,18 @@ _load_env_file()
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-secret-key")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in {"1", "true", "yes", "on"}
+DEMO_MODE = os.getenv("DJANGO_DEMO_MODE", "0").lower() in {"1", "true", "yes", "on"}
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if host.strip()]
+
+if not DEBUG:
+    if len(SECRET_KEY) < 50 or len(set(SECRET_KEY)) < 5 or SECRET_KEY.startswith(("dev-only", "replace-", "django-insecure-")):
+        raise ImproperlyConfigured("Set a strong DJANGO_SECRET_KEY of at least 50 characters when DEBUG is false")
+    if not os.getenv("DJANGO_ALLOWED_HOSTS", "").strip() or "*" in ALLOWED_HOSTS:
+        raise ImproperlyConfigured("Set explicit DJANGO_ALLOWED_HOSTS when DEBUG is false")
+
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = not DEBUG
 
 INSTALLED_APPS = [
     "django.contrib.admin",

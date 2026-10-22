@@ -10,11 +10,13 @@ from django.db.utils import OperationalError, ProgrammingError
 logger = logging.getLogger('scheduler')
 
 # init scheduler
-scheduler = BackgroundScheduler()
+scheduler = BackgroundScheduler(timezone="UTC", job_defaults={
+    "max_instances": 1, "coalesce": True, "misfire_grace_time": 300,
+})
 # add DjangoJobStore to the scheduler
 scheduler.add_jobstore(DjangoJobStore(), "default")
 
-# Task 1: Run once a day at 8:00 PM to collect historical data, weekdays only   day_of_week='mon-fri'
+# Historical data: weekdays at 12:15 UTC. Registration does not start a worker.
 @register_job(scheduler, 'cron', id='collect_history_data', hour=12, minute=15, day_of_week='mon-fri')
 def collect_history_data():
     batch_directory = None
@@ -73,5 +75,5 @@ def clear_existing_jobs():
     except (OperationalError, ProgrammingError) as exc:
         logger.warning(f"Skip clearing scheduler jobs before migrations: {exc}")
 
-# register events and start the scheduler
+# Register listeners only. A web worker must never start the scheduler implicitly.
 register_events(scheduler)

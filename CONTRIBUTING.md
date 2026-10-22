@@ -1,88 +1,31 @@
-# Contributing Guide
+# Contributing
 
-Thank you for your interest in contributing to Forex Local Visual.
+Use Python 3.12 (3.13 is also tested on Linux) and a repository-local .venv. Install with python -m pip install -r requirements.txt. The [README](README.md) covers macOS/Linux and Windows; external-SSD users should first apply [storage configuration](docs/macos-development.md).
 
-## Ways to Contribute
+## Before changing code
 
-- Report bugs and suggest features through Issues
-- Improve code quality and documentation
-- Add tests and improve reliability
-- Propose architecture or performance optimizations
+1. Start a focused branch from main and describe the user-visible problem.
+2. Reproduce data loss, API failures or other substantial bugs with synthetic fixtures.
+3. Make the smallest cohesive change and update its data contract and documentation.
+4. Run python -m pip check and python scripts/verify.py.
+5. Open a PR with the problem, resulting behavior and verification evidence.
 
-## Development Setup
+The verifier uses disposable SQLite files and never loads your local .env or normal database. Python socket connections and live yfinance entry points are blocked during tests. Mock provider calls and clocks; do not download market data in CI. Never start a long-running collector to verify a test.
 
-1. Create and activate virtual environment.
+## Data changes
 
-```powershell
-cd forex
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
+Validation must finish before replacing stored data. Database errors must roll back the entire replacement. Test missing providers, malformed and empty data, invalid timestamps/prices, duplicate and overlapping batches, and partial database writes.
 
-2. Install dependencies.
+Do not add a schema constraint or remove stored rows without an explicit compatibility analysis and a backup/recovery plan. Existing databases may contain duplicates. Explain migrations in the PR; irreversible changes require operator review.
 
-```powershell
-pip install -r requirements.txt
-```
+## Dependencies and style
 
-3. Configure environment variables.
+Retain pip and the existing requirements/constraints workflow. Update constraints in a reviewed dependency PR and let the full OS/Python matrix validate it. Keep functions focused and prefer pathlib, UTF-8 and timezone-aware UTC timestamps. Avoid unrelated formatting churn.
 
-```powershell
-Copy-Item .env.example .env
-```
+GitHub Actions revisions are pinned. Dependabot opens dependency and action updates for review; it does not auto-merge them.
 
-4. Run local checks.
+## Reviews and releases
 
-```powershell
-python manage.py check
-python manage.py migrate --noinput
-```
+Use clear commits, include evidence in the PR, and wait for CI before merging. Version changes follow pre-1.0 semantic versioning. [Release instructions](docs/releasing.md) describe tag/version validation and source archives.
 
-## Branching and Pull Requests
-
-1. Fork this repository and create a branch from main.
-2. Use clear branch names, such as feat/scheduler-cleanup or fix/import-bug.
-3. Keep each pull request focused on one concern.
-4. Add context in PR description: problem, solution, validation steps.
-5. Include screenshots when UI behavior changes.
-
-## Code Style
-
-- Follow existing project style and naming patterns.
-- Prefer small, focused functions.
-- Keep comments concise and meaningful.
-- Avoid introducing unrelated refactors in the same PR.
-
-## Commit Messages
-
-Use clear commit messages. Example:
-
-- feat: add scheduler startup guard for migrate command
-- fix: handle missing apscheduler table before first migration
-- docs: add multilingual open-source documentation
-
-## Testing Expectations
-
-Before opening a PR, run:
-
-```powershell
-python manage.py check
-python manage.py migrate --noinput
-```
-
-If you add data or scheduler logic, explain how you validated behavior.
-
-## Security and Sensitive Data
-
-Do not commit:
-
-- .env files
-- local db.sqlite3
-- logs and generated CSV data
-- secrets, tokens, or credentials
-
-Please review SECURITY.md before reporting vulnerabilities.
-
-## Communication
-
-Be respectful and constructive in all interactions. By participating, you agree to follow CODE_OF_CONDUCT.md.
+Do not commit local .env files, databases, logs, environments, generated CSV batches, credentials or provider data. For vulnerabilities, follow [SECURITY.md](SECURITY.md). Participation follows the [code of conduct](CODE_OF_CONDUCT.md).
